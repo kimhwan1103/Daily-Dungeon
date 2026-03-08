@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Quest Widget</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Noto Sans KR', sans-serif; background: transparent; overflow: hidden; user-select: none; }
+
+    .widget { width: 340px; height: 580px; position: relative; display: flex; flex-direction: column; }
+
+    .glass-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(165deg, rgba(255,255,255,0.82), rgba(245,248,255,0.78), rgba(240,245,255,0.75));
+      border-radius: 8px; border: 1px solid rgba(255,255,255,0.6);
+      box-shadow: 0 4px 30px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+
+    .content { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%; }
+
+    /* ====== 헤더 ====== */
+    .header {
+      padding: 12px 14px 10px; cursor: grab; display: flex; align-items: center;
+      justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .header:active { cursor: grabbing; }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-icon {
+      width: 28px; height: 28px; background: linear-gradient(135deg, #f5a623, #f7c948);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(245,166,35,0.35);
+    }
+    .header-title { color: #3a3a4a; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+    .header-sub { color: #aaa; font-size: 8px; letter-spacing: 1px; }
+    .header-btns { display: flex; gap: 4px; }
+    .btn-h {
+      width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.6); color: #999; font-size: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .btn-h:hover { background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.3); color: #f5a623; }
+    .btn-h.active { background: rgba(245,166,35,0.2); color: #f5a623; border-color: #f5a623; }
+
+    /* ====== 프로필 ====== */
+    .profile { padding: 10px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .avatar-frame {
+      width: 46px; height: 46px; border-radius: 50%; border: 2.5px solid #f5a623; padding: 2px;
+      background: rgba(255,255,255,0.5); position: relative; box-shadow: 0 2px 10px rgba(245,166,35,0.2);
+      cursor: pointer; transition: transform 0.15s; flex-shrink: 0;
+    }
+    .avatar-frame:hover { transform: scale(1.08); }
+    .avatar-inner {
+      width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #fff8ee, #fff3db);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; overflow: hidden;
+    }
+    .avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .lv-badge {
+      position: absolute; bottom: -3px; right: -3px; min-width: 20px; height: 18px;
+      background: linear-gradient(135deg, #f5a623, #e8961e); color: #fff; font-size: 8px;
+      font-weight: 700; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      padding: 0 4px; border: 2px solid rgba(255,255,255,0.9);
+    }
+    .profile-info { flex: 1; min-width: 0; }
+    .player-name { color: #3a3a4a; font-size: 13px; font-weight: 700; }
+    .player-title { color: #c0965a; font-size: 9px; font-weight: 500; margin-top: 1px; }
+    .exp-row { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
+    .exp-label { color: #999; font-size: 8px; font-weight: 700; width: 20px; }
+    .exp-track { flex: 1; height: 7px; background: rgba(50,55,70,0.7); border-radius: 3px; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); }
+    .exp-fill { height: 100%; background: linear-gradient(90deg, #8bc34a, #aed581); border-radius: 2px; transition: width 0.5s cubic-bezier(0.25,1,0.5,1); position: relative; }
+    .exp-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%; background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent); }
+    .exp-val { color: #888; font-size: 8px; min-width: 50px; text-align: right; }
+
+    /* ====== 스탯 ====== */
+    .stat-row { display: flex; padding: 6px 14px; gap: 5px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .stat-box { flex: 1; text-align: center; padding: 5px 2px; background: rgba(255,255,255,0.4); border: 1px solid rgba(0,0,0,0.04); border-radius: 6px; }
+    .stat-num { color: #3a3a4a; font-size: 14px; font-weight: 700; }
+    .stat-label { color: #bbb; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }
+
+    /* ====== 탭 ====== */
+    .tabs { display: flex; padding: 0 14px; gap: 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .tab-btn {
+      flex: 1; padding: 7px 0; text-align: center; font-size: 10px; font-weight: 600;
+      color: #aaa; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; letter-spacing: 0.5px;
+    }
+    .tab-btn:hover { color: #777; }
+    .tab-btn.active { color: #f5a623; border-bottom-color: #f5a623; }
+    .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+    .tab-content.active { display: flex; }
+
+    /* ====== 퀘스트 탭 ====== */
+    .quest-area { flex: 1; padding: 6px 10px; overflow-y: auto; }
+    .quest-area::-webkit-scrollbar { width: 3px; }
+    .quest-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+    .sec-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; padding: 0 4px; }
+    .sec-dot { width: 5px; height: 5px; background: #f5a623; border-radius: 50%; }
+    .sec-title { color: #aaa; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; }
+    .sec-line { flex: 1; height: 1px; background: rgba(0,0,0,0.06); }
+
+    .q-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 4px;
+      background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px;
+      cursor: pointer; transition: all 0.2s; animation: qIn 0.25s ease;
+    }
+    @keyframes qIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .q-item:hover { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.2); transform: translateX(2px); }
+    .q-item.done { opacity: 0.4; }
+    .q-item.done .q-name { text-decoration: line-through; color: #aaa; }
+    .q-cat { font-size: 14px; flex-shrink: 0; }
+    .q-check {
+      width: 20px; height: 20px; border: 2px solid rgba(0,0,0,0.12); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 10px; transition: all 0.2s; color: transparent; background: rgba(255,255,255,0.6);
+    }
+    .q-item.done .q-check { background: linear-gradient(135deg, #8bc34a, #7cb342); border-color: #8bc34a; color: #fff; box-shadow: 0 2px 6px rgba(139,195,74,0.3); }
+    .q-info { flex: 1; min-width: 0; }
+    .q-name { color: #3a3a4a; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .q-meta { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    .q-xp { color: #c0965a; font-size: 9px; font-weight: 500; }
+    .q-diff { padding: 1px 6px; border-radius: 10px; font-size: 8px; font-weight: 700; flex-shrink: 0; }
+    .qd-E { background: rgba(139,195,74,0.15); color: #7cb342; }
+    .qd-M { background: rgba(245,166,35,0.15); color: #f5a623; }
+    .qd-H { background: rgba(244,67,54,0.12); color: #e53935; }
+    .qd-S { background: rgba(156,39,176,0.12); color: #9c27b0; }
+
+    .btn-add-row { padding: 8px 14px 10px; border-top: 1px solid rgba(0,0,0,0.05); }
+    .btn-add {
+      width: 100%; padding: 8px; background: linear-gradient(135deg, #f5a623, #f7c948);
+      border: none; border-radius: 20px; color: #fff; font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: 1px; cursor: pointer;
+      box-shadow: 0 3px 12px rgba(245,166,35,0.3); transition: all 0.15s;
+    }
+    .btn-add:hover { box-shadow: 0 4px 16px rgba(245,166,35,0.4); transform: translateY(-1px); }
+
+    /* ====== 히스토리 탭 ====== */
+    .history-area { flex: 1; padding: 8px 12px; overflow-y: auto; }
+    .history-area::-webkit-scrollbar { width: 3px; }
+    .history-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+    .h-item { padding: 8px 10px; margin-bottom: 4px; background: rgba(255,255,255,0.4); border-radius: 6px; border: 1px solid rgba(0,0,0,0.04); }
+    .h-name { color: #3a3a4a; font-size: 11px; font-weight: 500; }
+    .h-meta { color: #aaa; font-size: 9px; margin-top: 2px; display: flex; gap: 8px; }
+    .h-empty { text-align: center; color: #ccc; margin-top: 40px; font-size: 11px; }
+
+    /* ====== 설정 탭 ====== */
+    .settings-area { flex: 1; padding: 10px 14px; overflow-y: auto; }
+    .settings-area::-webkit-scrollbar { width: 3px; }
+    .settings-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+    .s-group { margin-bottom: 12px; }
+    .s-group-title { color: #aaa; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 6px; text-transform: uppercase; }
+    .s-row {
+      display: flex; align-items: center; justify-content: space-between; padding: 8px 10px;
+      background: rgba(255,255,255,0.4); border-radius: 6px; margin-bottom: 4px;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .s-label { color: #555; font-size: 11px; font-weight: 500; }
+    .s-hint { color: #bbb; font-size: 8px; margin-top: 1px; }
+
+    /* 토글 스위치 */
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; inset: 0; background: rgba(0,0,0,0.1);
+      border-radius: 10px; transition: 0.2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute; width: 16px; height: 16px; left: 2px; bottom: 2px;
+      background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .toggle input:checked + .toggle-slider { background: #f5a623; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    /* 슬라이더 */
+    .s-slider {
+      width: 80px; -webkit-appearance: none; height: 4px; background: rgba(0,0,0,0.08);
+      border-radius: 2px; outline: none;
+    }
+    .s-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+      background: linear-gradient(135deg, #f5a623, #f7c948); cursor: pointer;
+      box-shadow: 0 1px 4px rgba(245,166,35,0.4);
+    }
+
+    .s-input {
+      width: 140px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.1); border-radius: 4px;
+      font-family: 'Noto Sans KR', sans-serif; font-size: 11px; color: #3a3a4a; background: rgba(255,255,255,0.6);
+      outline: none;
+    }
+    .s-input:focus { border-color: rgba(245,166,35,0.4); }
+
+    /* ====== 모달 (증명 제출) ====== */
+    .modal-overlay {
+      display: none; position: absolute; inset: 0; z-index: 50;
+      background: rgba(0,0,0,0.3); border-radius: 8px; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.on { display: flex; animation: modalIn 0.2s ease; }
+    @keyframes modalIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      width: 290px; max-height: 420px; background: rgba(255,255,255,0.95); border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column;
+    }
+    .modal-header {
+      padding: 12px 14px; border-bottom: 1px solid rgba(0,0,0,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { color: #3a3a4a; font-size: 13px; font-weight: 700; }
+    .modal-close {
+      width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,0,0,0.06);
+      color: #999; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: rgba(244,67,54,0.1); color: #e53935; }
+    .modal-body { padding: 12px 14px; flex: 1; overflow-y: auto; }
+    .modal-body::-webkit-scrollbar { width: 3px; }
+    .modal-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+    .proof-textarea {
+      width: 100%; min-height: 60px; padding: 8px; border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 6px; font-family: 'Noto Sans KR', sans-serif; font-size: 11px;
+      resize: vertical; outline: none; background: rgba(255,255,255,0.8);
+    }
+    .proof-textarea:focus { border-color: rgba(245,166,35,0.4); }
+    .proof-label { color: #777; font-size: 10px; font-weight: 600; margin-bottom: 4px; display: block; }
+    .proof-section { margin-bottom: 10px; }
+    .proof-dropzone {
+      width: 100%; height: 60px; border: 2px dashed rgba(0,0,0,0.1); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 10px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .proof-dropzone:hover { border-color: rgba(245,166,35,0.3); color: #f5a623; }
+    .proof-dropzone.has-img { border-style: solid; border-color: rgba(139,195,74,0.3); }
+    .proof-thumb { max-width: 100%; max-height: 56px; border-radius: 4px; object-fit: contain; }
+
+    .modal-footer { padding: 10px 14px; border-top: 1px solid rgba(0,0,0,0.06); display: flex; gap: 6px; }
+    .btn-modal {
+      flex: 1; padding: 8px; border: none; border-radius: 18px; font-family: 'Noto Sans KR', sans-serif;
+      font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-submit { background: linear-gradient(135deg, #f5a623, #f7c948); color: #fff; box-shadow: 0 2px 8px rgba(245,166,35,0.3); }
+    .btn-submit:hover { box-shadow: 0 3px 12px rgba(245,166,35,0.4); }
+    .btn-cancel { background: rgba(0,0,0,0.06); color: #777; }
+
+    /* ====== NPC 피드백 ====== */
+    .npc-bubble {
+      display: none; position: absolute; bottom: 14px; left: 14px; right: 14px; z-index: 60;
+      background: rgba(255,255,255,0.97); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      padding: 12px; border: 1px solid rgba(0,0,0,0.06);
+    }
+    .npc-bubble.on { display: block; animation: npcIn 0.3s ease; }
+    @keyframes npcIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .npc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .npc-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .npc-name { color: #667eea; font-size: 11px; font-weight: 700; }
+    .npc-text { color: #555; font-size: 11px; line-height: 1.5; }
+    .npc-close { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 12px; }
+
+    /* ====== 이펙트 ====== */
+    .fx-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; border-radius: 8px; }
+    .xp-float {
+      position: absolute; color: #f5a623; font-size: 14px; font-weight: 700;
+      text-shadow: 0 1px 4px rgba(245,166,35,0.4); animation: xpFloat 1.2s ease forwards; pointer-events: none;
+    }
+    @keyframes xpFloat { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-60px); } }
+
+    .particle {
+      position: absolute; width: 6px; height: 6px; border-radius: 50%;
+      animation: particleBurst 0.8s ease forwards; pointer-events: none;
+    }
+    @keyframes particleBurst {
+      0% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(0); }
+    }
+
+    /* 레벨업 */
+    .lvup {
+      display: none; position: absolute; inset: 0; z-index: 100;
+      background: rgba(255,255,255,0.95); align-items: center; justify-content: center;
+      flex-direction: column; border-radius: 8px;
+    }
+    .lvup.on { display: flex; animation: lvF 2.5s ease forwards; }
+    @keyframes lvF { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+    .lv-up-icon {
+      width: 50px; height: 50px; background: linear-gradient(135deg, #f5a623, #f7c948);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; box-shadow: 0 4px 20px rgba(245,166,35,0.4);
+      animation: lvPulse 0.5s ease infinite alternate;
+    }
+    @keyframes lvPulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+    .lv-up-text { color: #f5a623; font-size: 18px; font-weight: 700; letter-spacing: 4px; margin-top: 10px; }
+    .lv-up-num { color: #3a3a4a; font-size: 28px; font-weight: 700; margin-top: 2px; }
+    .lv-up-line { width: 50px; height: 2px; background: linear-gradient(90deg, transparent, #f5a623, transparent); margin: 6px 0; }
+
+    .mode-tag { position: absolute; top: 5px; right: 55px; font-size: 7px; color: rgba(0,0,0,0.12); letter-spacing: 1px; z-index: 10; }
+    .empty { text-align: center; color: #ccc; margin-top: 40px; font-size: 11px; }
+
+    /* 퀘스트 추가 모달 */
+    .add-form { padding: 12px 14px; }
+    .add-field { margin-bottom: 8px; }
+    .add-field label { display: block; color: #777; font-size: 10px; font-weight: 600; margin-bottom: 3px; }
+    .add-field input, .add-field select {
+      width: 100%; padding: 6px 8px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;
+      font-family: 'Noto Sans KR', sans-serif; font-size: 11px; outline: none; background: rgba(255,255,255,0.8);
+    }
+    .add-field input:focus, .add-field select:focus { border-color: rgba(245,166,35,0.4); }
+    .cat-options { display: flex; gap: 4px; flex-wrap: wrap; }
+    .cat-opt {
+      padding: 4px 8px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.6);
+      font-size: 11px; cursor: pointer; transition: all 0.15s;
+    }
+    .cat-opt:hover, .cat-opt.sel { background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.3); }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div class="glass-bg"></div>
+    <div class="fx-layer" id="fx-layer"></div>
+
+    <div class="lvup" id="levelup">
+      <div class="lv-up-icon">⚔</div>
+      <div class="lv-up-text">LEVEL UP</div>
+      <div class="lv-up-line"></div>
+      <div class="lv-up-num" id="lvup-lv">Lv. 2</div>
+    </div>
+
+    <!-- 모달: 증명 제출 -->
+    <div class="modal-overlay" id="proof-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title" id="proof-quest-name">퀘스트 증명</span>
+          <button class="modal-close" id="proof-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="proof-section">
+            <span class="proof-label">작업 내용 / 메모</span>
+            <textarea class="proof-textarea" id="proof-text" placeholder="작업 내용을 입력하세요..."></textarea>
+          </div>
+          <div class="proof-section">
+            <span class="proof-label">스크린샷 첨부</span>
+            <div class="proof-dropzone" id="proof-dropzone">클릭하여 이미지 첨부</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-modal btn-cancel" id="proof-cancel">취소</button>
+          <button class="btn-modal btn-submit" id="proof-submit">✓ 완료 제출</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 모달: 퀘스트 추가 -->
+    <div class="modal-overlay" id="add-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">새로운 퀘스트</span>
+          <button class="modal-close" id="add-close">✕</button>
+        </div>
+        <div class="add-form">
+          <div class="add-field">
+            <label>퀘스트 이름</label>
+            <input type="text" id="add-name" placeholder="할 일을 입력하세요">
+          </div>
+          <div class="add-field">
+            <label>카테고리</label>
+            <div class="cat-options" id="cat-options">
+              <span class="cat-opt sel" data-cat="dev">💻 개발</span>
+              <span class="cat-opt" data-cat="study">📚 학습</span>
+              <span class="cat-opt" data-cat="life">🏃 일상</span>
+              <span class="cat-opt" data-cat="work">📋 업무</span>
+              <span class="cat-opt" data-cat="etc">⭐ 기타</span>
+            </div>
+          </div>
+          <div class="add-field">
+            <label>난이도</label>
+            <select id="add-diff">
+              <option value="easy">Easy (15 EXP)</option>
+              <option value="medium" selected>Normal (30 EXP)</option>
+              <option value="hard">Hard (50 EXP)</option>
+              <option value="legendary">Epic (100 EXP)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-modal btn-cancel" id="add-cancel">취소</button>
+          <button class="btn-modal btn-submit" id="add-submit">추가</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC 피드백 -->
+    <div class="npc-bubble" id="npc-bubble">
+      <button class="npc-close" id="npc-close">✕</button>
+      <div class="npc-header">
+        <div class="npc-avatar">🧙</div>
+        <span class="npc-name">길드 마스터</span>
+      </div>
+      <div class="npc-text" id="npc-text"></div>
+    </div>
+
+    <div class="content">
+      <div class="mode-tag" id="mode-text">DESKTOP</div>
+
+      <div class="header" id="drag-area">
+        <div class="header-left">
+          <div class="header-icon">Q</div>
+          <div>
+            <div class="header-title">Quest Log</div>
+            <div class="header-sub">Today's Mission</div>
+          </div>
+        </div>
+        <div class="header-btns">
+          <button class="btn-h" id="btn-pin" title="모드 전환 (Ctrl+Shift+Space)">📌</button>
+          <button class="btn-h" id="btn-ct" title="클릭 무시 (Ctrl+Shift+T)">🖱</button>
+          <button class="btn-h" id="btn-min" title="숨기기">─</button>
+        </div>
+      </div>
+
+      <div class="profile">
+        <div class="avatar-frame" id="avatar-frame" title="클릭하여 아바타 변경">
+          <div class="avatar-inner" id="avatar-inner">⚔️</div>
+          <div class="lv-badge" id="lv-badge">Lv.1</div>
+        </div>
+        <div class="profile-info">
+          <div class="player-name" id="p-name">Player</div>
+          <div class="player-title" id="p-title">초보 모험가</div>
+          <div class="exp-row">
+            <span class="exp-label">EXP</span>
+            <div class="exp-track"><div class="exp-fill" id="xp-bar" style="width:0%"></div></div>
+            <span class="exp-val" id="xp-text">0 / 100</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-num" id="s-done">0</div><div class="stat-label">Cleared</div></div>
+        <div class="stat-box"><div class="stat-num" id="s-streak">0</div><div class="stat-label">Combo</div></div>
+        <div class="stat-box"><div class="stat-num" id="s-xp">0</div><div class="stat-label">Total EXP</div></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab-btn active" data-tab="quests">⚔ 퀘스트</div>
+        <div class="tab-btn" data-tab="history">📜 기록</div>
+        <div class="tab-btn" data-tab="settings">⚙ 설정</div>
+      </div>
+
+      <!-- 퀘스트 탭 -->
+      <div class="tab-content active" data-tab="quests">
+        <div class="quest-area" id="quest-list"></div>
+        <div class="btn-add-row"><button class="btn-add" id="btn-add">+ New Quest</button></div>
+      </div>
+
+      <!-- 기록 탭 -->
+      <div class="tab-content" data-tab="history">
+        <div class="history-area" id="history-list"></div>
+      </div>
+
+      <!-- 설정 탭 -->
+      <div class="tab-content" data-tab="settings">
+        <div class="settings-area">
+          <div class="s-group">
+            <div class="s-group-title">프로필</div>
+            <div class="s-row">
+              <div><div class="s-label">닉네임</div></div>
+              <input class="s-input" id="s-name" placeholder="Player">
+            </div>
+          </div>
+          <div class="s-group">
+            <div class="s-group-title">위젯</div>
+            <div class="s-row">
+              <div><div class="s-label">투명도</div><div class="s-hint" id="s-op-val">100%</div></div>
+              <input type="range" class="s-slider" id="s-opacity" min="20" max="100" value="100">
+            </div>
+            <div class="s-row">
+              <div><div class="s-label">항상 위에 표시</div><div class="s-hint">Ctrl+Shift+Space</div></div>
+              <label class="toggle"><input type="checkbox" id="s-aot"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="s-row">
+              <div><div class="s-label">클릭 무시</div><div class="s-hint">Ctrl+Shift+T</div></div>
+              <label class="toggle"><input type="checkbox" id="s-ct"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="s-row">
+              <div><div class="s-label">효과음</div></div>
+              <label class="toggle"><input type="checkbox" id="s-sound" checked><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+          <div class="s-group">
+            <div class="s-group-title">데이터</div>
+            <div class="s-row" style="cursor:pointer" id="s-reset">
+              <div class="s-label" style="color:#e53935">전체 초기화</div>
+              <span style="color:#e53935;font-size:12px">⟳</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ===== 사운드 =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function getAudio() { if (!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
+
+function playSound(type) {
+  if (!state.soundOn) return;
+  const ctx = getAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  gain.gain.value = 0.08;
+
+  if (type === 'check') {
+    osc.type = 'sine'; osc.frequency.value = 880;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    osc.start(); osc.stop(ctx.currentTime + 0.2);
+  } else if (type === 'uncheck') {
+    osc.type = 'sine'; osc.frequency.value = 440;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+  } else if (type === 'levelup') {
+    osc.type = 'square'; osc.frequency.value = 523;
+    gain.gain.value = 0.06;
+    osc.frequency.setValueAtTime(523, ctx.currentTime);
+    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.15);
+    osc.frequency.setValueAtTime(784, ctx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(1047, ctx.currentTime + 0.45);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start(); osc.stop(ctx.currentTime + 0.6);
+  } else if (type === 'add') {
+    osc.type = 'sine'; osc.frequency.value = 660;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.start(); osc.stop(ctx.currentTime + 0.12);
+  }
+}
+
+// ===== 이펙트 =====
+function spawnXpFloat(xp, x, y) {
+  const el = document.createElement('div');
+  el.className = 'xp-float';
+  el.textContent = `+${xp} EXP`;
+  el.style.left = `${x}px`; el.style.top = `${y}px`;
+  document.getElementById('fx-layer').appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+
+function spawnParticles(x, y) {
+  const colors = ['#f5a623', '#8bc34a', '#f7c948', '#ff7043', '#64b5f6'];
+  for (let i = 0; i < 12; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    const angle = (Math.PI * 2 / 12) * i;
+    const dist = 30 + Math.random() * 40;
+    el.style.cssText = `left:${x}px;top:${y}px;background:${colors[i % colors.length]};--px:${Math.cos(angle)*dist}px;--py:${Math.sin(angle)*dist}px;`;
+    document.getElementById('fx-layer').appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+}
+
+// ===== 데이터 =====
+const RANKS = [
+  { lv:1, title:'초보 모험가' }, { lv:3, title:'수련생' }, { lv:5, title:'전사' },
+  { lv:8, title:'정예 기사' }, { lv:12, title:'챔피언' }, { lv:20, title:'전설' },
+];
+const DX = { easy:15, medium:30, hard:50, legendary:100 };
+const DN = { easy:'Easy', medium:'Normal', hard:'Hard', legendary:'Epic' };
+const DL = { easy:'E', medium:'M', hard:'H', legendary:'S' };
+const CAT_ICON = { dev:'💻', study:'📚', life:'🏃', work:'📋', etc:'⭐' };
+
+const NPC_MESSAGES = {
+  complete: [
+    '훌륭하군! 이 정도면 충분해.',
+    '좋아, 잘 해냈어. 경험치를 받아라.',
+    '음, 나쁘지 않은 성과야. 계속 정진하도록.',
+    '대단해! 다음 퀘스트도 기대하고 있지.',
+  ],
+  levelup: [
+    '레벨이 올랐군! 점점 강해지고 있어.',
+    '축하한다! 새로운 경지에 도달했어.',
+    '이 속도라면 곧 전설이 될 수 있을 거야.',
+  ],
+  streak: [
+    '연속 클리어라니, 대단한 집중력이야!',
+    '콤보가 이어지고 있어! 멈추지 마!',
+  ],
+};
+
+let state = {
+  level: 1, xp: 0, xpToNext: 100, totalXp: 0,
+  streak: 0, completed: 0, name: 'Player',
+  avatarUrl: null, opacity: 100, soundOn: true,
+  quests: [
+    { id:1, name:'프로젝트 기획서 작성', xp:30, difficulty:'medium', category:'work', completed:false },
+    { id:2, name:'운동 30분', xp:15, difficulty:'easy', category:'life', completed:false },
+    { id:3, name:'알고리즘 문제 풀기', xp:50, difficulty:'hard', category:'study', completed:false },
+  ],
+  history: [],
+};
+let nextId = 100;
+let proofQuestId = null;
+let proofImageData = null;
+
+// ===== 렌더 =====
+function render() {
+  const rank = getRank();
+  document.getElementById('lv-badge').textContent = `Lv.${state.level}`;
+  document.getElementById('p-name').textContent = state.name;
+  document.getElementById('p-title').textContent = rank.title;
+  document.getElementById('xp-bar').style.width = `${(state.xp / state.xpToNext) * 100}%`;
+  document.getElementById('xp-text').textContent = `${state.xp} / ${state.xpToNext}`;
+  document.getElementById('s-done').textContent = state.completed;
+  document.getElementById('s-streak').textContent = state.streak;
+  document.getElementById('s-xp').textContent = state.totalXp;
+  renderAvatar();
+  renderQuests();
+  renderHistory();
+}
+
+function getRank() { let r = RANKS[0]; for (const x of RANKS) if (state.level >= x.lv) r = x; return r; }
+
+function renderAvatar() {
+  const el = document.getElementById('avatar-inner');
+  if (state.avatarUrl) el.innerHTML = `<img class="avatar-img" src="${state.avatarUrl}" alt="">`;
+  else el.textContent = '⚔️';
+}
+
+function renderQuests() {
+  const el = document.getElementById('quest-list');
+  const active = state.quests.filter(q => !q.completed);
+  const done = state.quests.filter(q => q.completed);
+  let h = '';
+  if (active.length) {
+    h += `<div class="sec-row"><div class="sec-dot"></div><span class="sec-title">ACTIVE</span><div class="sec-line"></div></div>`;
+    h += active.map(qHTML).join('');
+  }
+  if (done.length) {
+    h += `<div class="sec-row" style="margin-top:6px"><div class="sec-dot" style="background:#8bc34a"></div><span class="sec-title">COMPLETE</span><div class="sec-line"></div></div>`;
+    h += done.map(qHTML).join('');
+  }
+  if (!state.quests.length) h = '<div class="empty">퀘스트를 추가해보세요</div>';
+  el.innerHTML = h;
+  el.querySelectorAll('.q-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const id = parseInt(item.dataset.id);
+      const q = state.quests.find(x => x.id === id);
+      if (q && !q.completed) openProofModal(id, e);
+      else if (q && q.completed) undoQuest(id);
+    });
+  });
+}
+
+function qHTML(q) {
+  const d = DL[q.difficulty];
+  const cat = CAT_ICON[q.category] || '⭐';
+  return `
+    <div class="q-item ${q.completed ? 'done' : ''}" data-id="${q.id}">
+      <span class="q-cat">${cat}</span>
+      <div class="q-check">${q.completed ? '✓' : ''}</div>
+      <div class="q-info">
+        <div class="q-name">${q.name}</div>
+        <div class="q-meta"><span class="q-xp">+${q.xp} EXP</span></div>
+      </div>
+      <span class="q-diff qd-${d}">${DN[q.difficulty]}</span>
+    </div>`;
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!state.history.length) { el.innerHTML = '<div class="empty">아직 기록이 없습니다</div>'; return; }
+  el.innerHTML = state.history.slice().reverse().map(h => `
+    <div class="h-item">
+      <div class="h-name">${CAT_ICON[h.category]||'⭐'} ${h.name}</div>
+      <div class="h-meta">
+        <span>+${h.xp} EXP</span>
+        <span>${h.date}</span>
+        ${h.proof ? '<span>📎 증명 있음</span>' : ''}
+      </div>
+    </div>`).join('');
+}
+
+// ===== 퀘스트 로직 =====
+function completeQuest(id, proofText, proofImg) {
+  const q = state.quests.find(x => x.id === id);
+  if (!q || q.completed) return;
+  q.completed = true;
+  state.xp += q.xp;
+  state.totalXp += q.xp;
+  state.completed++;
+  state.streak++;
+
+  // 히스토리 추가
+  state.history.push({
+    name: q.name, xp: q.xp, category: q.category, difficulty: q.difficulty,
+    date: new Date().toLocaleDateString('ko-KR'),
+    proof: !!(proofText || proofImg),
+  });
+
+  // 이펙트
+  const item = document.querySelector(`.q-item[data-id="${id}"]`);
+  if (item) {
+    const rect = item.getBoundingClientRect();
+    const wr = document.querySelector('.widget').getBoundingClientRect();
+    spawnXpFloat(q.xp, rect.left - wr.left + 40, rect.top - wr.top);
+    spawnParticles(rect.left - wr.left + 20, rect.top - wr.top + 15);
+  }
+  playSound('check');
+
+  const didLvUp = checkLvUp();
+  saveState();
+  render();
+
+  // NPC 피드백
+  setTimeout(() => {
+    if (didLvUp) showNpc(pickRandom(NPC_MESSAGES.levelup));
+    else if (state.streak >= 3) showNpc(pickRandom(NPC_MESSAGES.streak));
+    else showNpc(pickRandom(NPC_MESSAGES.complete));
+  }, 600);
+}
+
+function undoQuest(id) {
+  const q = state.quests.find(x => x.id === id);
+  if (!q || !q.completed) return;
+  q.completed = false;
+  state.xp = Math.max(0, state.xp - q.xp);
+  state.totalXp = Math.max(0, state.totalXp - q.xp);
+  state.completed = Math.max(0, state.completed - 1);
+  state.streak = 0;
+  playSound('uncheck');
+  saveState();
+  render();
+}
+
+function checkLvUp() {
+  let did = false;
+  while (state.xp >= state.xpToNext) {
+    state.xp -= state.xpToNext;
+    state.level++;
+    state.xpToNext = Math.floor(state.xpToNext * 1.4);
+    did = true;
+  }
+  if (did) showLvUp();
+  return did;
+}
+
+function showLvUp() {
+  playSound('levelup');
+  const o = document.getElementById('levelup');
+  document.getElementById('lvup-lv').textContent = `Lv. ${state.level}`;
+  o.classList.add('on');
+  setTimeout(() => o.classList.remove('on'), 2500);
+}
+
+function showNpc(text) {
+  const el = document.getElementById('npc-bubble');
+  document.getElementById('npc-text').textContent = text;
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 4000);
+}
+
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ===== 증명 모달 =====
+function openProofModal(id, e) {
+  proofQuestId = id;
+  proofImageData = null;
+  const q = state.quests.find(x => x.id === id);
+  document.getElementById('proof-quest-name').textContent = q.name;
+  document.getElementById('proof-text').value = '';
+  document.getElementById('proof-dropzone').innerHTML = '클릭하여 이미지 첨부';
+  document.getElementById('proof-dropzone').classList.remove('has-img');
+  document.getElementById('proof-modal').classList.add('on');
+}
+
+document.getElementById('proof-close').onclick = () => document.getElementById('proof-modal').classList.remove('on');
+document.getElementById('proof-cancel').onclick = () => document.getElementById('proof-modal').classList.remove('on');
+document.getElementById('proof-submit').onclick = () => {
+  const text = document.getElementById('proof-text').value;
+  document.getElementById('proof-modal').classList.remove('on');
+  if (proofQuestId) completeQuest(proofQuestId, text, proofImageData);
+};
+
+document.getElementById('proof-dropzone').onclick = async () => {
+  const data = await window.widget.selectProofImage();
+  if (data) {
+    proofImageData = data;
+    document.getElementById('proof-dropzone').innerHTML = `<img class="proof-thumb" src="${data}">`;
+    document.getElementById('proof-dropzone').classList.add('has-img');
+  }
+};
+
+// ===== 퀘스트 추가 모달 =====
+let selectedCat = 'dev';
+document.getElementById('btn-add').onclick = () => {
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-diff').value = 'medium';
+  document.getElementById('add-modal').classList.add('on');
+  setTimeout(() => document.getElementById('add-name').focus(), 100);
+};
+document.getElementById('add-close').onclick = () => document.getElementById('add-modal').classList.remove('on');
+document.getElementById('add-cancel').onclick = () => document.getElementById('add-modal').classList.remove('on');
+document.getElementById('add-submit').onclick = () => {
+  const name = document.getElementById('add-name').value.trim();
+  if (!name) return;
+  const diff = document.getElementById('add-diff').value;
+  state.quests.push({ id: nextId++, name, xp: DX[diff], difficulty: diff, category: selectedCat, completed: false });
+  playSound('add');
+  saveState();
+  render();
+  document.getElementById('add-modal').classList.remove('on');
+};
+document.getElementById('add-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('add-submit').click();
+});
+
+document.getElementById('cat-options').addEventListener('click', e => {
+  const opt = e.target.closest('.cat-opt');
+  if (!opt) return;
+  document.querySelectorAll('.cat-opt').forEach(o => o.classList.remove('sel'));
+  opt.classList.add('sel');
+  selectedCat = opt.dataset.cat;
+});
+
+// ===== NPC =====
+document.getElementById('npc-close').onclick = () => document.getElementById('npc-bubble').classList.remove('on');
+
+// ===== 탭 =====
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(`.tab-content[data-tab="${btn.dataset.tab}"]`).classList.add('active');
+  };
+});
+
+// ===== 드래그 =====
+const drag = document.getElementById('drag-area');
+let dragging = false, lx, ly;
+drag.addEventListener('mousedown', e => { if (e.target.tagName === 'BUTTON') return; dragging = true; lx = e.screenX; ly = e.screenY; });
+document.addEventListener('mousemove', e => { if (!dragging) return; window.widget.moveWindow(e.screenX - lx, e.screenY - ly); lx = e.screenX; ly = e.screenY; });
+document.addEventListener('mouseup', () => { dragging = false; });
+
+// ===== 헤더 버튼 =====
+document.getElementById('btn-min').onclick = () => window.widget.toggleVisibility();
+document.getElementById('btn-pin').onclick = () => window.widget.toggleDesktopMode();
+document.getElementById('btn-ct').onclick = () => {
+  const el = document.getElementById('btn-ct');
+  const isOn = el.classList.toggle('active');
+  window.widget.toggleClickThrough(isOn);
+};
+
+window.widget.onDesktopModeChanged(v => { document.getElementById('mode-text').textContent = v ? 'DESKTOP' : 'FLOAT'; });
+window.widget.onClickThroughChanged(v => { document.getElementById('btn-ct').classList.toggle('active', v); });
+
+// ===== 아바타 =====
+document.getElementById('avatar-frame').onclick = async () => {
+  const data = await window.widget.selectAvatar();
+  if (data) { state.avatarUrl = data; saveState(); renderAvatar(); }
+};
+
+// ===== 설정 =====
+const opSlider = document.getElementById('s-opacity');
+opSlider.oninput = () => {
+  const v = parseInt(opSlider.value);
+  state.opacity = v;
+  document.getElementById('s-op-val').textContent = `${v}%`;
+  window.widget.setOpacity(v / 100);
+};
+opSlider.onchange = () => saveState();
+
+document.getElementById('s-name').onchange = (e) => {
+  state.name = e.target.value.trim() || 'Player';
+  saveState(); render();
+};
+
+document.getElementById('s-aot').onchange = (e) => { window.widget.setAlwaysOnTop(e.target.checked); };
+document.getElementById('s-ct').onchange = (e) => { window.widget.toggleClickThrough(e.target.checked); };
+document.getElementById('s-sound').onchange = (e) => { state.soundOn = e.target.checked; saveState(); };
+
+document.getElementById('s-reset').onclick = () => {
+  if (confirm('모든 데이터를 초기화하시겠습니까?')) {
+    localStorage.removeItem('sao-state');
+    location.reload();
+  }
+};
+
+// ===== 저장 =====
+function saveState() { localStorage.setItem('sao-state', JSON.stringify(state)); }
+function loadState() {
+  const s = localStorage.getItem('sao-state');
+  if (s) {
+    const parsed = JSON.parse(s);
+    state = { ...state, ...parsed };
+    if (!state.history) state.history = [];
+    if (!state.soundOn && state.soundOn !== false) state.soundOn = true;
+    nextId = Math.max(nextId, ...state.quests.map(q => q.id), ...(state.history||[]).length ? [0] : [0]) + 1;
+  }
+}
+
+// ===== 초기화 =====
+loadState();
+opSlider.value = state.opacity;
+document.getElementById('s-op-val').textContent = `${state.opacity}%`;
+window.widget.setOpacity(state.opacity / 100);
+document.getElementById('s-name').value = state.name;
+document.getElementById('s-sound').checked = state.soundOn;
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "gamification-widget",
+  "version": "1.0.0",
+  "description": "Desktop gamification todo widget",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.4.11"
+  }
+}
