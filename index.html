@@ -444,7 +444,7 @@
       <!-- 퀘스트 탭 -->
       <div class="tab-content active" data-tab="quests">
         <div class="quest-area" id="quest-list"></div>
-        <div class="btn-add-row"><button class="btn-add" id="btn-add">+ New Quest</button></div>
+        <div class="btn-add-row"><button class="btn-add" id="btn-add">🔄 Notion Sync</button></div>
       </div>
 
       <!-- 기록 탭 -->
@@ -554,55 +554,42 @@ function spawnParticles(x, y) {
   }
 }
 
+// ===== API =====
+const API_BASE = 'http://127.0.0.1:8000';
+
+async function api(path, options = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}
+
 // ===== 데이터 =====
-const RANKS = [
-  { lv:1, title:'초보 모험가' }, { lv:3, title:'수련생' }, { lv:5, title:'전사' },
-  { lv:8, title:'정예 기사' }, { lv:12, title:'챔피언' }, { lv:20, title:'전설' },
-];
 const DX = { easy:15, medium:30, hard:50, legendary:100 };
 const DN = { easy:'Easy', medium:'Normal', hard:'Hard', legendary:'Epic' };
 const DL = { easy:'E', medium:'M', hard:'H', legendary:'S' };
 const CAT_ICON = { dev:'💻', study:'📚', life:'🏃', work:'📋', etc:'⭐' };
 
-const NPC_MESSAGES = {
-  complete: [
-    '훌륭하군! 이 정도면 충분해.',
-    '좋아, 잘 해냈어. 경험치를 받아라.',
-    '음, 나쁘지 않은 성과야. 계속 정진하도록.',
-    '대단해! 다음 퀘스트도 기대하고 있지.',
-  ],
-  levelup: [
-    '레벨이 올랐군! 점점 강해지고 있어.',
-    '축하한다! 새로운 경지에 도달했어.',
-    '이 속도라면 곧 전설이 될 수 있을 거야.',
-  ],
-  streak: [
-    '연속 클리어라니, 대단한 집중력이야!',
-    '콤보가 이어지고 있어! 멈추지 마!',
-  ],
-};
-
 let state = {
   level: 1, xp: 0, xpToNext: 100, totalXp: 0,
-  streak: 0, completed: 0, name: 'Player',
+  streak: 0, completed: 0, name: 'Player', title: '초보 모험가',
   avatarUrl: null, opacity: 100, soundOn: true,
-  quests: [
-    { id:1, name:'프로젝트 기획서 작성', xp:30, difficulty:'medium', category:'work', completed:false },
-    { id:2, name:'운동 30분', xp:15, difficulty:'easy', category:'life', completed:false },
-    { id:3, name:'알고리즘 문제 풀기', xp:50, difficulty:'hard', category:'study', completed:false },
-  ],
+  quests: [],
   history: [],
 };
-let nextId = 100;
 let proofQuestId = null;
 let proofImageData = null;
 
 // ===== 렌더 =====
 function render() {
-  const rank = getRank();
   document.getElementById('lv-badge').textContent = `Lv.${state.level}`;
   document.getElementById('p-name').textContent = state.name;
-  document.getElementById('p-title').textContent = rank.title;
+  document.getElementById('p-title').textContent = state.title;
   document.getElementById('xp-bar').style.width = `${(state.xp / state.xpToNext) * 100}%`;
   document.getElementById('xp-text').textContent = `${state.xp} / ${state.xpToNext}`;
   document.getElementById('s-done').textContent = state.completed;
@@ -612,8 +599,6 @@ function render() {
   renderQuests();
   renderHistory();
 }
-
-function getRank() { let r = RANKS[0]; for (const x of RANKS) if (state.level >= x.lv) r = x; return r; }
 
 function renderAvatar() {
   const el = document.getElementById('avatar-inner');
@@ -638,10 +623,9 @@ function renderQuests() {
   el.innerHTML = h;
   el.querySelectorAll('.q-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      const id = parseInt(item.dataset.id);
+      const id = item.dataset.id;
       const q = state.quests.find(x => x.id === id);
       if (q && !q.completed) openProofModal(id, e);
-      else if (q && q.completed) undoQuest(id);
     });
   });
 }
@@ -664,35 +648,27 @@ function qHTML(q) {
 function renderHistory() {
   const el = document.getElementById('history-list');
   if (!state.history.length) { el.innerHTML = '<div class="empty">아직 기록이 없습니다</div>'; return; }
-  el.innerHTML = state.history.slice().reverse().map(h => `
+  el.innerHTML = state.history.map(h => {
+    const dateStr = h.completed_at ? new Date(h.completed_at).toLocaleDateString('ko-KR') : '';
+    return `
     <div class="h-item">
-      <div class="h-name">${CAT_ICON[h.category]||'⭐'} ${h.name}</div>
+      <div class="h-name">${CAT_ICON[h.category]||'⭐'} ${h.quest_title}</div>
       <div class="h-meta">
-        <span>+${h.xp} EXP</span>
-        <span>${h.date}</span>
-        ${h.proof ? '<span>📎 증명 있음</span>' : ''}
+        <span>+${h.xp_earned} EXP</span>
+        <span>${dateStr}</span>
+        ${h.had_proof ? '<span>📎 증명 있음</span>' : ''}
       </div>
-    </div>`).join('');
+      ${h.ai_feedback ? `<div style="color:#888;font-size:9px;margin-top:3px;line-height:1.4">🧙 ${h.ai_feedback.slice(0,80)}${h.ai_feedback.length>80?'...':''}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ===== 퀘스트 로직 =====
-function completeQuest(id, proofText, proofImg) {
+async function completeQuest(id, proofText, proofImg) {
   const q = state.quests.find(x => x.id === id);
   if (!q || q.completed) return;
-  q.completed = true;
-  state.xp += q.xp;
-  state.totalXp += q.xp;
-  state.completed++;
-  state.streak++;
 
-  // 히스토리 추가
-  state.history.push({
-    name: q.name, xp: q.xp, category: q.category, difficulty: q.difficulty,
-    date: new Date().toLocaleDateString('ko-KR'),
-    proof: !!(proofText || proofImg),
-  });
-
-  // 이펙트
+  // 이펙트 (즉시 표시)
   const item = document.querySelector(`.q-item[data-id="${id}"]`);
   if (item) {
     const rect = item.getBoundingClientRect();
@@ -702,47 +678,56 @@ function completeQuest(id, proofText, proofImg) {
   }
   playSound('check');
 
-  const didLvUp = checkLvUp();
-  saveState();
+  // 로딩 표시
+  q.completed = true;
   render();
 
-  // NPC 피드백
-  setTimeout(() => {
-    if (didLvUp) showNpc(pickRandom(NPC_MESSAGES.levelup));
-    else if (state.streak >= 3) showNpc(pickRandom(NPC_MESSAGES.streak));
-    else showNpc(pickRandom(NPC_MESSAGES.complete));
-  }, 600);
-}
+  try {
+    // AI 검증 API 호출
+    const res = await api('/api/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        task_id: q.id,
+        quest_title: q.name,
+        category: q.category,
+        difficulty: q.difficulty,
+        proof_text: proofText || null,
+        proof_image_base64: proofImg || null,
+      }),
+    });
 
-function undoQuest(id) {
-  const q = state.quests.find(x => x.id === id);
-  if (!q || !q.completed) return;
-  q.completed = false;
-  state.xp = Math.max(0, state.xp - q.xp);
-  state.totalXp = Math.max(0, state.totalXp - q.xp);
-  state.completed = Math.max(0, state.completed - 1);
-  state.streak = 0;
-  playSound('uncheck');
-  saveState();
-  render();
-}
+    if (res.result.is_passed) {
+      // 통과: 서버에서 XP/레벨 처리 완료 → 최신 상태 반영
+      await loadUserStats();
 
-function checkLvUp() {
-  let did = false;
-  while (state.xp >= state.xpToNext) {
-    state.xp -= state.xpToNext;
-    state.level++;
-    state.xpToNext = Math.floor(state.xpToNext * 1.4);
-    did = true;
+      if (res.level_up) {
+        showLvUp(res.new_level);
+        playSound('levelup');
+      }
+
+      // NPC 피드백 표시 (AI가 생성한 피드백)
+      setTimeout(() => showNpc(res.result.npc_feedback), 600);
+
+      // 히스토리 새로고침
+      await loadHistory();
+    } else {
+      // 실패: 완료 상태 되돌림
+      q.completed = false;
+      await loadUserStats();
+      setTimeout(() => showNpc(res.result.npc_feedback), 300);
+    }
+  } catch (e) {
+    // API 오류 시 되돌림
+    q.completed = false;
+    showNpc(`검증 중 오류가 발생했습니다: ${e.message}`);
   }
-  if (did) showLvUp();
-  return did;
+
+  render();
 }
 
-function showLvUp() {
-  playSound('levelup');
+function showLvUp(newLevel) {
   const o = document.getElementById('levelup');
-  document.getElementById('lvup-lv').textContent = `Lv. ${state.level}`;
+  document.getElementById('lvup-lv').textContent = `Lv. ${newLevel || state.level}`;
   o.classList.add('on');
   setTimeout(() => o.classList.remove('on'), 2500);
 }
@@ -754,7 +739,51 @@ function showNpc(text) {
   setTimeout(() => el.classList.remove('on'), 4000);
 }
 
-function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// ===== API 데이터 로딩 =====
+async function loadQuests() {
+  try {
+    const data = await api('/api/quests/today');
+    state.quests = data.quests.map(q => ({
+      id: q.id,
+      name: q.name,
+      category: q.category,
+      difficulty: q.difficulty,
+      xp: q.xp,
+      completed: q.completed,
+      due_date: q.due_date,
+    }));
+    render();
+  } catch (e) {
+    console.error('퀘스트 로딩 실패:', e);
+  }
+}
+
+async function loadUserStats() {
+  try {
+    const s = await api('/api/user/stats');
+    state.level = s.level;
+    state.xp = s.current_xp;
+    state.xpToNext = s.xp_to_next;
+    state.totalXp = s.total_xp;
+    state.completed = s.completed_count;
+    state.streak = s.streak;
+    state.name = s.name;
+    state.title = s.title;
+    render();
+  } catch (e) {
+    console.error('유저 상태 로딩 실패:', e);
+  }
+}
+
+async function loadHistory() {
+  try {
+    const data = await api('/api/history');
+    state.history = data.logs;
+    render();
+  } catch (e) {
+    console.error('히스토리 로딩 실패:', e);
+  }
+}
 
 // ===== 증명 모달 =====
 function openProofModal(id, e) {
@@ -770,10 +799,14 @@ function openProofModal(id, e) {
 
 document.getElementById('proof-close').onclick = () => document.getElementById('proof-modal').classList.remove('on');
 document.getElementById('proof-cancel').onclick = () => document.getElementById('proof-modal').classList.remove('on');
-document.getElementById('proof-submit').onclick = () => {
+document.getElementById('proof-submit').onclick = async () => {
   const text = document.getElementById('proof-text').value;
   document.getElementById('proof-modal').classList.remove('on');
-  if (proofQuestId) completeQuest(proofQuestId, text, proofImageData);
+  if (proofQuestId) {
+    document.getElementById('proof-submit').disabled = true;
+    await completeQuest(proofQuestId, text, proofImageData);
+    document.getElementById('proof-submit').disabled = false;
+  }
 };
 
 document.getElementById('proof-dropzone').onclick = async () => {
@@ -785,37 +818,15 @@ document.getElementById('proof-dropzone').onclick = async () => {
   }
 };
 
-// ===== 퀘스트 추가 모달 =====
-let selectedCat = 'dev';
-document.getElementById('btn-add').onclick = () => {
-  document.getElementById('add-name').value = '';
-  document.getElementById('add-diff').value = 'medium';
-  document.getElementById('add-modal').classList.add('on');
-  setTimeout(() => document.getElementById('add-name').focus(), 100);
-};
-document.getElementById('add-close').onclick = () => document.getElementById('add-modal').classList.remove('on');
-document.getElementById('add-cancel').onclick = () => document.getElementById('add-modal').classList.remove('on');
-document.getElementById('add-submit').onclick = () => {
-  const name = document.getElementById('add-name').value.trim();
-  if (!name) return;
-  const diff = document.getElementById('add-diff').value;
-  state.quests.push({ id: nextId++, name, xp: DX[diff], difficulty: diff, category: selectedCat, completed: false });
+// ===== 노션 새로고침 =====
+document.getElementById('btn-add').onclick = async () => {
+  document.getElementById('btn-add').textContent = '동기화 중...';
+  document.getElementById('btn-add').disabled = true;
+  await loadQuests();
+  document.getElementById('btn-add').textContent = '🔄 Notion Sync';
+  document.getElementById('btn-add').disabled = false;
   playSound('add');
-  saveState();
-  render();
-  document.getElementById('add-modal').classList.remove('on');
 };
-document.getElementById('add-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('add-submit').click();
-});
-
-document.getElementById('cat-options').addEventListener('click', e => {
-  const opt = e.target.closest('.cat-opt');
-  if (!opt) return;
-  document.querySelectorAll('.cat-opt').forEach(o => o.classList.remove('sel'));
-  opt.classList.add('sel');
-  selectedCat = opt.dataset.cat;
-});
 
 // ===== NPC =====
 document.getElementById('npc-close').onclick = () => document.getElementById('npc-bubble').classList.remove('on');
@@ -852,7 +863,7 @@ window.widget.onClickThroughChanged(v => { document.getElementById('btn-ct').cla
 // ===== 아바타 =====
 document.getElementById('avatar-frame').onclick = async () => {
   const data = await window.widget.selectAvatar();
-  if (data) { state.avatarUrl = data; saveState(); renderAvatar(); }
+  if (data) { state.avatarUrl = data; saveLocal(); renderAvatar(); }
 };
 
 // ===== 설정 =====
@@ -863,45 +874,67 @@ opSlider.oninput = () => {
   document.getElementById('s-op-val').textContent = `${v}%`;
   window.widget.setOpacity(v / 100);
 };
-opSlider.onchange = () => saveState();
+opSlider.onchange = () => saveLocal();
 
-document.getElementById('s-name').onchange = (e) => {
-  state.name = e.target.value.trim() || 'Player';
-  saveState(); render();
+document.getElementById('s-name').onchange = async (e) => {
+  const newName = e.target.value.trim() || 'Player';
+  try {
+    await api('/api/user/stats', {
+      method: 'PATCH',
+      body: JSON.stringify({ name: newName }),
+    });
+    state.name = newName;
+    render();
+  } catch (err) {
+    console.error('닉네임 변경 실패:', err);
+  }
 };
 
 document.getElementById('s-aot').onchange = (e) => { window.widget.setAlwaysOnTop(e.target.checked); };
 document.getElementById('s-ct').onchange = (e) => { window.widget.toggleClickThrough(e.target.checked); };
-document.getElementById('s-sound').onchange = (e) => { state.soundOn = e.target.checked; saveState(); };
+document.getElementById('s-sound').onchange = (e) => { state.soundOn = e.target.checked; saveLocal(); };
 
-document.getElementById('s-reset').onclick = () => {
+document.getElementById('s-reset').onclick = async () => {
   if (confirm('모든 데이터를 초기화하시겠습니까?')) {
-    localStorage.removeItem('sao-state');
+    localStorage.removeItem('sao-widget-settings');
+    try {
+      await api('/api/reset', { method: 'POST' });
+    } catch (e) { /* 리셋 API 없으면 무시 */ }
     location.reload();
   }
 };
 
-// ===== 저장 =====
-function saveState() { localStorage.setItem('sao-state', JSON.stringify(state)); }
-function loadState() {
-  const s = localStorage.getItem('sao-state');
+// ===== 로컬 설정 저장 (위젯 UI 설정만) =====
+function saveLocal() {
+  localStorage.setItem('sao-widget-settings', JSON.stringify({
+    avatarUrl: state.avatarUrl,
+    opacity: state.opacity,
+    soundOn: state.soundOn,
+  }));
+}
+function loadLocal() {
+  const s = localStorage.getItem('sao-widget-settings');
   if (s) {
     const parsed = JSON.parse(s);
-    state = { ...state, ...parsed };
-    if (!state.history) state.history = [];
-    if (!state.soundOn && state.soundOn !== false) state.soundOn = true;
-    nextId = Math.max(nextId, ...state.quests.map(q => q.id), ...(state.history||[]).length ? [0] : [0]) + 1;
+    state.avatarUrl = parsed.avatarUrl || null;
+    state.opacity = parsed.opacity ?? 100;
+    state.soundOn = parsed.soundOn ?? true;
   }
 }
 
 // ===== 초기화 =====
-loadState();
+loadLocal();
 opSlider.value = state.opacity;
 document.getElementById('s-op-val').textContent = `${state.opacity}%`;
 window.widget.setOpacity(state.opacity / 100);
-document.getElementById('s-name').value = state.name;
 document.getElementById('s-sound').checked = state.soundOn;
-render();
+
+// 백엔드에서 데이터 로딩
+(async () => {
+  await Promise.all([loadUserStats(), loadQuests(), loadHistory()]);
+  document.getElementById('s-name').value = state.name;
+  render();
+})();
 </script>
 </body>
 </html>

@@ -1,5 +1,15 @@
+# Electron (Frontend)
 node_modules/
 package-lock.json
 dist/
 out/
 *.log
+
+# Python (Backend)
+__pycache__/
+*.pyc
+.env
+backend/data/database.json
+.venv/
+venv/
+daily-dungeon/
