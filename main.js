@@ -14,8 +14,72 @@ const { exec } = require('child_process');
 
 let mainWindow;   // 메인 위젯 윈도우
 let tray;          // 시스템 트레이 아이콘
+let backendProcess = null;   // FastAPI 백엔드 프로세스
 let isDesktopMode = true;    // true: 바탕화면 고정 / false: 항상 위
 let isClickThrough = false;  // true: 마우스 이벤트를 뒤쪽 창으로 통과시킴
+
+// ============================================================
+//  백엔드 서버 자동 실행
+// ============================================================
+/*
+ * 개발 모드: python으로 직접 실행
+ * 빌드 모드: PyInstaller로 번들된 quest-backend.exe 실행
+ *
+ * 백엔드가 준비될 때까지 폴링한 후 윈도우를 로드
+ */
+function startBackend() {
+  const isDev = !app.isPackaged;
+
+  if (isDev) {
+    // 개발 모드: python 직접 실행
+    const pythonPath = path.join(__dirname, 'daily-dungeon', 'Scripts', 'python.exe');
+    const serverScript = path.join(__dirname, 'backend', 'run_server.py');
+
+    backendProcess = require('child_process').spawn(pythonPath, [serverScript], {
+      cwd: path.join(__dirname, 'backend'),
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+  } else {
+    // 빌드 모드: PyInstaller exe 실행
+    const backendExe = path.join(process.resourcesPath, 'backend', 'quest-backend.exe');
+
+    backendProcess = require('child_process').spawn(backendExe, [], {
+      cwd: path.join(process.resourcesPath, 'backend'),
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+  }
+
+  backendProcess.on('error', (err) => {
+    console.error('백엔드 실행 실패:', err.message);
+  });
+}
+
+function stopBackend() {
+  if (backendProcess) {
+    backendProcess.kill();
+    backendProcess = null;
+  }
+}
+
+// 백엔드 서버가 응답할 때까지 대기 (최대 15초)
+function waitForBackend(retries = 30) {
+  return new Promise((resolve) => {
+    const check = (remaining) => {
+      const http = require('http');
+      const req = http.get('http://127.0.0.1:8000/', (res) => {
+        resolve(true);
+      });
+      req.on('error', () => {
+        if (remaining <= 0) { resolve(false); return; }
+        setTimeout(() => check(remaining - 1), 500);
+      });
+      req.setTimeout(2000, () => { req.destroy(); });
+    };
+    check(retries);
+  });
+}
 
 // ============================================================
 //  윈도우 생성
@@ -278,14 +342,20 @@ function createTray() {
 //  앱 생명주기
 // ============================================================
 
-// Electron 앱 준비 완료 → 윈도우 + 트레이 생성
-app.whenReady().then(() => {
+// Electron 앱 준비 완료 → 백엔드 시작 → 윈도우 + 트레이 생성
+app.whenReady().then(async () => {
+  startBackend();
+  const ready = await waitForBackend();
+  if (!ready) console.error('백엔드 서버 시작 시간 초과');
   createWindow();
   createTray();
 });
 
-// 앱 종료 시 전역 단축키 해제 (다른 앱과 충돌 방지)
-app.on('will-quit', () => { globalShortcut.unregisterAll(); });
+// 앱 종료 시 백엔드 프로세스 정리 + 전역 단축키 해제
+app.on('will-quit', () => {
+  stopBackend();
+  globalShortcut.unregisterAll();
+});
 
 // 모든 윈도우가 닫혀도 앱을 종료하지 않음 (트레이에서 계속 실행)
 app.on('window-all-closed', (e) => { e.preventDefault(); });

@@ -5,12 +5,46 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev"
+    "dev": "electron . --dev",
+    "build:backend": "cd backend && pyinstaller backend.spec --noconfirm",
+    "build:electron": "electron-builder --win",
+    "build": "npm run build:backend && npm run build:electron"
+  },
+  "build": {
+    "appId": "com.quest-widget.app",
+    "productName": "Quest Widget",
+    "win": {
+      "target": "nsis",
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": null,
+      "uninstallerIcon": null
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist/quest-backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      }
+    ],
+    "directories": {
+      "output": "release"
+    }
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^33.4.11"
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
   }
 }

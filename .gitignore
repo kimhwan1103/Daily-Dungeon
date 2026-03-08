@@ -13,3 +13,8 @@ backend/data/database.json
 .venv/
 venv/
 daily-dungeon/
+
+# Build output
+backend/dist/
+backend/build/
+release/
