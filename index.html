@@ -124,6 +124,61 @@
     .qd-H { background: rgba(244,67,54,0.12); color: #e53935; }
     .qd-S { background: rgba(156,39,176,0.12); color: #9c27b0; }
 
+    /* ====== 일일 퀘스트 태그 ====== */
+    .q-daily-tag {
+      padding: 1px 5px; border-radius: 8px; font-size: 7px; font-weight: 700;
+      background: rgba(33,150,243,0.12); color: #1e88e5; margin-left: 3px;
+    }
+
+    /* ====== 세부 퀘스트 (Sub-quest) ====== */
+    .sq-area {
+      margin: 0 10px 4px 10px; padding: 6px 8px;
+      background: rgba(255,255,255,0.35); border: 1px solid rgba(0,0,0,0.04);
+      border-radius: 0 0 8px 8px; margin-top: -4px;
+      animation: qIn 0.2s ease;
+    }
+    .sq-progress {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+    }
+    .sq-progress-bar {
+      flex: 1; height: 4px; background: rgba(0,0,0,0.06); border-radius: 2px; overflow: hidden;
+    }
+    .sq-progress-fill {
+      height: 100%; background: linear-gradient(90deg, #64b5f6, #42a5f5);
+      border-radius: 2px; transition: width 0.3s ease;
+    }
+    .sq-progress-text { color: #999; font-size: 8px; white-space: nowrap; }
+    .sq-item {
+      display: flex; align-items: center; gap: 6px; padding: 3px 4px;
+      cursor: pointer; border-radius: 4px; transition: background 0.15s;
+    }
+    .sq-item:hover { background: rgba(100,181,246,0.08); }
+    .sq-check {
+      width: 14px; height: 14px; border: 1.5px solid rgba(0,0,0,0.15); border-radius: 3px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 8px; color: transparent; transition: all 0.2s;
+    }
+    .sq-item.checked .sq-check {
+      background: linear-gradient(135deg, #64b5f6, #42a5f5); border-color: #42a5f5;
+      color: #fff; box-shadow: 0 1px 4px rgba(66,165,245,0.3);
+    }
+    .sq-text { color: #666; font-size: 10px; }
+    .sq-item.checked .sq-text { text-decoration: line-through; color: #bbb; }
+
+    /* ====== 일일 스트릭 바 ====== */
+    .daily-streak-bar {
+      display: flex; align-items: center; gap: 4px; padding: 4px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .daily-streak-label { color: #1e88e5; font-size: 8px; font-weight: 700; }
+    .daily-streak-dots { display: flex; gap: 3px; }
+    .daily-dot {
+      width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid rgba(33,150,243,0.3);
+      transition: all 0.2s;
+    }
+    .daily-dot.filled { background: linear-gradient(135deg, #42a5f5, #1e88e5); border-color: #1e88e5; }
+    .daily-streak-count { color: #999; font-size: 8px; margin-left: auto; }
+
     .btn-add-row { padding: 8px 14px 10px; border-top: 1px solid rgba(0,0,0,0.05); }
     .btn-add {
       width: 100%; padding: 8px; background: linear-gradient(135deg, #f5a623, #f7c948);
@@ -433,6 +488,7 @@
         <div class="stat-box"><div class="stat-num" id="s-done">0</div><div class="stat-label">Cleared</div></div>
         <div class="stat-box"><div class="stat-num" id="s-streak">0</div><div class="stat-label">Combo</div></div>
         <div class="stat-box"><div class="stat-num" id="s-xp">0</div><div class="stat-label">Total EXP</div></div>
+        <div class="stat-box"><div class="stat-num" id="s-daily">0</div><div class="stat-label">Daily</div></div>
       </div>
 
       <div class="tabs">
@@ -578,10 +634,12 @@ const CAT_ICON = { dev:'💻', study:'📚', life:'🏃', work:'📋', etc:'⭐'
 let state = {
   level: 1, xp: 0, xpToNext: 100, totalXp: 0,
   streak: 0, completed: 0, name: 'Player', title: '초보 모험가',
+  dailyStreak: 0,
   avatarUrl: null, opacity: 100, soundOn: true,
   quests: [],
   history: [],
 };
+let expandedQuests = {}; // 세부 퀘스트 펼침 상태
 let proofQuestId = null;
 let proofImageData = null;
 
@@ -595,6 +653,7 @@ function render() {
   document.getElementById('s-done').textContent = state.completed;
   document.getElementById('s-streak').textContent = state.streak;
   document.getElementById('s-xp').textContent = state.totalXp;
+  document.getElementById('s-daily').textContent = state.dailyStreak;
   renderAvatar();
   renderQuests();
   renderHistory();
@@ -608,41 +667,120 @@ function renderAvatar() {
 
 function renderQuests() {
   const el = document.getElementById('quest-list');
-  const active = state.quests.filter(q => !q.completed);
-  const done = state.quests.filter(q => q.completed);
+  const dailyActive = state.quests.filter(q => q.is_daily && !q.completed);
+  const dailyDone = state.quests.filter(q => q.is_daily && q.completed);
+  const normalActive = state.quests.filter(q => !q.is_daily && !q.completed);
+  const normalDone = state.quests.filter(q => !q.is_daily && q.completed);
   let h = '';
-  if (active.length) {
-    h += `<div class="sec-row"><div class="sec-dot"></div><span class="sec-title">ACTIVE</span><div class="sec-line"></div></div>`;
-    h += active.map(qHTML).join('');
+
+  // 일일 퀘스트 섹션
+  if (dailyActive.length || dailyDone.length) {
+    h += `<div class="sec-row"><div class="sec-dot" style="background:#1e88e5"></div><span class="sec-title" style="color:#1e88e5">DAILY</span><div class="sec-line"></div></div>`;
+    h += dailyActive.map(q => qHTML(q, true)).join('');
+    h += dailyDone.map(q => qHTML(q, true)).join('');
   }
-  if (done.length) {
+
+  // 일반 퀘스트 섹션
+  if (normalActive.length) {
+    h += `<div class="sec-row"><div class="sec-dot"></div><span class="sec-title">ACTIVE</span><div class="sec-line"></div></div>`;
+    normalActive.forEach(q => {
+      h += qHTML(q, false);
+      if (q.sub_total > 0 && expandedQuests[q.id]) h += subQuestHTML(q);
+    });
+  }
+  if (normalDone.length) {
     h += `<div class="sec-row" style="margin-top:6px"><div class="sec-dot" style="background:#8bc34a"></div><span class="sec-title">COMPLETE</span><div class="sec-line"></div></div>`;
-    h += done.map(qHTML).join('');
+    normalDone.forEach(q => {
+      h += qHTML(q, false);
+      if (q.sub_total > 0 && expandedQuests[q.id]) h += subQuestHTML(q);
+    });
   }
   if (!state.quests.length) h = '<div class="empty">퀘스트를 추가해보세요</div>';
   el.innerHTML = h;
+
+  // 이벤트 바인딩
   el.querySelectorAll('.q-item').forEach(item => {
     item.addEventListener('click', (e) => {
+      // 세부 퀘스트 토글 버튼 클릭 무시
+      if (e.target.closest('.q-expand')) return;
       const id = item.dataset.id;
       const q = state.quests.find(x => x.id === id);
-      if (q && !q.completed) openProofModal(id, e);
+      if (!q || q.completed) return;
+      if (q.is_daily) {
+        completeDailyQuest(id);
+      } else {
+        openProofModal(id, e);
+      }
+    });
+  });
+
+  // 세부 퀘스트 펼침 버튼
+  el.querySelectorAll('.q-expand').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      expandedQuests[id] = !expandedQuests[id];
+      renderQuests();
+    });
+  });
+
+  // 세부 퀘스트 체크박스
+  el.querySelectorAll('.sq-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const blockId = item.dataset.blockId;
+      const pageId = item.dataset.pageId;
+      const isChecked = item.classList.contains('checked');
+      toggleSubQuest(blockId, pageId, !isChecked);
     });
   });
 }
 
-function qHTML(q) {
+function qHTML(q, isDaily) {
   const d = DL[q.difficulty];
   const cat = CAT_ICON[q.category] || '⭐';
+  const dailyTag = isDaily ? '<span class="q-daily-tag">DAILY</span>' : '';
+  const hasSubQuests = q.sub_total > 0;
+  const expandBtn = hasSubQuests && !isDaily
+    ? `<span class="q-expand" data-id="${q.id}" style="cursor:pointer;font-size:10px;color:#999;padding:2px 4px;flex-shrink:0">${expandedQuests[q.id] ? '▾' : '▸'} ${q.sub_done}/${q.sub_total}</span>`
+    : '';
+  const subProgress = hasSubQuests && !isDaily
+    ? `<div style="margin-top:3px;display:flex;align-items:center;gap:4px">
+        <div style="flex:1;height:3px;background:rgba(0,0,0,0.06);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${q.sub_total?((q.sub_done/q.sub_total)*100):0}%;background:linear-gradient(90deg,#64b5f6,#42a5f5);border-radius:2px;transition:width 0.3s"></div>
+        </div>
+       </div>`
+    : '';
+
   return `
     <div class="q-item ${q.completed ? 'done' : ''}" data-id="${q.id}">
       <span class="q-cat">${cat}</span>
       <div class="q-check">${q.completed ? '✓' : ''}</div>
       <div class="q-info">
-        <div class="q-name">${q.name}</div>
+        <div class="q-name">${q.name}${dailyTag}</div>
         <div class="q-meta"><span class="q-xp">+${q.xp} EXP</span></div>
+        ${subProgress}
       </div>
+      ${expandBtn}
       <span class="q-diff qd-${d}">${DN[q.difficulty]}</span>
     </div>`;
+}
+
+function subQuestHTML(q) {
+  if (!q.sub_quests || !q.sub_quests.length) return '';
+  const items = q.sub_quests.map(sq => `
+    <div class="sq-item ${sq.checked ? 'checked' : ''}" data-block-id="${sq.block_id}" data-page-id="${q.id}">
+      <div class="sq-check">${sq.checked ? '✓' : ''}</div>
+      <span class="sq-text">${sq.text}</span>
+    </div>
+  `).join('');
+  return `<div class="sq-area">
+    <div class="sq-progress">
+      <div class="sq-progress-bar"><div class="sq-progress-fill" style="width:${q.sub_total?((q.sub_done/q.sub_total)*100):0}%"></div></div>
+      <span class="sq-progress-text">${q.sub_done} / ${q.sub_total}</span>
+    </div>
+    ${items}
+  </div>`;
 }
 
 function renderHistory() {
@@ -751,6 +889,10 @@ async function loadQuests() {
       xp: q.xp,
       completed: q.completed,
       due_date: q.due_date,
+      is_daily: q.is_daily || false,
+      sub_quests: q.sub_quests || [],
+      sub_total: q.sub_total || 0,
+      sub_done: q.sub_done || 0,
     }));
     render();
   } catch (e) {
@@ -767,6 +909,7 @@ async function loadUserStats() {
     state.totalXp = s.total_xp;
     state.completed = s.completed_count;
     state.streak = s.streak;
+    state.dailyStreak = s.daily_streak || 0;
     state.name = s.name;
     state.title = s.title;
     render();
@@ -783,6 +926,98 @@ async function loadHistory() {
   } catch (e) {
     console.error('히스토리 로딩 실패:', e);
   }
+}
+
+// ===== 세부 퀘스트 토글 =====
+async function toggleSubQuest(blockId, pageId, checked) {
+  try {
+    const res = await api('/api/quests/sub-quest/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ block_id: blockId, checked, page_id: pageId }),
+    });
+
+    // 로컬 상태 업데이트
+    const q = state.quests.find(x => x.id === pageId);
+    if (q) {
+      const sq = q.sub_quests.find(s => s.block_id === blockId);
+      if (sq) sq.checked = checked;
+      q.sub_done = q.sub_quests.filter(s => s.checked).length;
+    }
+
+    if (checked && res.xp_earned > 0) {
+      playSound('check');
+      const item = document.querySelector(`.sq-item[data-block-id="${blockId}"]`);
+      if (item) {
+        const rect = item.getBoundingClientRect();
+        const wr = document.querySelector('.widget').getBoundingClientRect();
+        spawnXpFloat(res.xp_earned, rect.left - wr.left + 20, rect.top - wr.top);
+      }
+      if (res.all_done) {
+        spawnParticles(170, 300);
+        showNpc(`모든 세부 퀘스트를 완료했습니다! 보너스 +${res.bonus_xp} XP`);
+      }
+      await loadUserStats();
+    }
+
+    if (res.level_up) {
+      showLvUp(res.new_level);
+      playSound('levelup');
+    }
+
+    render();
+  } catch (e) {
+    console.error('세부 퀘스트 토글 실패:', e);
+  }
+}
+
+// ===== 일일 퀘스트 완료 =====
+async function completeDailyQuest(id) {
+  const q = state.quests.find(x => x.id === id);
+  if (!q || q.completed) return;
+
+  const item = document.querySelector(`.q-item[data-id="${id}"]`);
+  if (item) {
+    const rect = item.getBoundingClientRect();
+    const wr = document.querySelector('.widget').getBoundingClientRect();
+    spawnXpFloat(q.xp, rect.left - wr.left + 40, rect.top - wr.top);
+    spawnParticles(rect.left - wr.left + 20, rect.top - wr.top + 15);
+  }
+  playSound('check');
+
+  q.completed = true;
+  render();
+
+  try {
+    const res = await api(`/api/quests/${id}/daily-complete`, {
+      method: 'POST',
+      body: JSON.stringify({
+        task_id: id,
+        quest_title: q.name,
+        difficulty: q.difficulty,
+      }),
+    });
+
+    state.dailyStreak = res.daily_streak;
+    await loadUserStats();
+
+    if (res.weekly_bonus) {
+      showNpc(`7일 연속 달성! 주간 보너스 +${res.weekly_bonus_xp} XP`);
+    } else {
+      showNpc(`일일 퀘스트 완료! 연속 ${res.daily_streak}일`);
+    }
+
+    if (res.level_up) {
+      showLvUp(res.new_level);
+      playSound('levelup');
+    }
+
+    await loadHistory();
+  } catch (e) {
+    q.completed = false;
+    showNpc(`일일 퀘스트 처리 오류: ${e.message}`);
+  }
+
+  render();
 }
 
 // ===== 증명 모달 =====

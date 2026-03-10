@@ -14,6 +14,17 @@ from enum import Enum
 
 
 # ============================================================
+#  세부 퀘스트 (Sub-quest)
+# ============================================================
+
+class SubQuestDTO(BaseModel):
+    """노션 페이지 내부 to_do 블록 → 세부 퀘스트"""
+    block_id: str = Field(description="노션 블록 ID")
+    text: str = Field(description="체크리스트 항목 텍스트")
+    checked: bool = Field(default=False, description="완료 여부")
+
+
+# ============================================================
 #  퀘스트 관련
 # ============================================================
 
@@ -46,6 +57,10 @@ class QuestDTO(BaseModel):
     xp: int = Field(default=30, description="보상 경험치")
     completed: bool = Field(default=False, description="완료 여부")
     due_date: Optional[str] = Field(default=None, description="마감일")
+    is_daily: bool = Field(default=False, description="일일 반복 퀘스트 여부")
+    sub_quests: list[SubQuestDTO] = Field(default_factory=list, description="세부 퀘스트 목록")
+    sub_total: int = Field(default=0, description="세부 퀘스트 총 개수")
+    sub_done: int = Field(default=0, description="완료된 세부 퀘스트 수")
 
 
 class QuestListResponse(BaseModel):
@@ -105,6 +120,8 @@ class UserStats(BaseModel):
     title: str = Field(default="초보 모험가", description="장착 중인 칭호")
     completed_count: int = Field(default=0, description="총 완료 퀘스트 수")
     streak: int = Field(default=0, description="연속 완료 콤보")
+    daily_streak: int = Field(default=0, description="일일 퀘스트 연속 완료 일수")
+    last_daily_date: Optional[str] = Field(default=None, description="마지막 일일 퀘스트 완료 날짜")
 
 
 class UserStatsUpdate(BaseModel):
@@ -131,3 +148,29 @@ class HistoryResponse(BaseModel):
     """퀘스트 로그 목록 응답"""
     logs: list[QuestLog]
     total: int
+
+
+# ============================================================
+#  세부 퀘스트 / 일일 퀘스트 응답
+# ============================================================
+
+class SubQuestToggleResponse(BaseModel):
+    """세부 퀘스트 토글 결과"""
+    block_id: str
+    checked: bool
+    xp_earned: int = Field(default=0, description="이 토글로 획득한 XP")
+    all_done: bool = Field(default=False, description="모든 세부 퀘스트 완료 여부")
+    bonus_xp: int = Field(default=0, description="전체 완료 보너스 XP")
+    level_up: bool = Field(default=False)
+    new_level: Optional[int] = None
+
+
+class DailyCompleteResponse(BaseModel):
+    """일일 퀘스트 체크 결과"""
+    task_id: str
+    xp_earned: int
+    daily_streak: int = Field(description="현재 일일 연속 일수")
+    weekly_bonus: bool = Field(default=False, description="7일 연속 보너스 발생 여부")
+    weekly_bonus_xp: int = Field(default=0)
+    level_up: bool = Field(default=False)
+    new_level: Optional[int] = None

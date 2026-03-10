@@ -23,7 +23,27 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
 
-    # 로컬 DB 경로
+    # 데이터베이스 URL (SQLAlchemy 형식)
+    # 기본값: 로컬 SQLite 파일
+    # 예시:
+    #   sqlite:///./data/quest.db          (로컬 SQLite)
+    #   postgresql://user:pass@host/dbname (PostgreSQL)
+    #   mysql+pymysql://user:pass@host/db  (MySQL)
+    DATABASE_URL: str = "sqlite:///" + str(
+        Path(__file__).parent.parent / "data" / "quest.db"
+    ).replace("\\", "/")
+
+    # SSH 터널 설정 (PostgreSQL 원격 접속 시)
+    # SSH_HOST를 설정하면 자동으로 SSH 터널을 통해 DB에 연결
+    SSH_HOST: str = ""
+    SSH_PORT: int = 22
+    SSH_USER: str = ""
+    SSH_PASSWORD: str = ""
+    SSH_KEY_PATH: str = ""  # SSH 키 파일 경로 (비밀번호 대신 사용 가능)
+    SSH_DB_HOST: str = "127.0.0.1"  # 터널 너머 DB 호스트 (보통 127.0.0.1)
+    SSH_DB_PORT: int = 5432          # 터널 너머 DB 포트
+
+    # TinyDB 경로 (하위 호환용, DATABASE_URL 우선)
     DB_PATH: str = str(Path(__file__).parent.parent / "data" / "database.json")
 
     model_config = {
