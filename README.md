@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/lang-English-blue)](docs/README_EN.md) [![한국어](https://img.shields.io/badge/lang-한국어-red)](README.md)
+
 # Quest Widget ⚔️
 
 바탕화면에 상주하는 게이미피케이션 할 일 관리 위젯입니다.
