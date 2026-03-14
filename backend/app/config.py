@@ -46,6 +46,15 @@ class Settings(BaseSettings):
     # TinyDB 경로 (하위 호환용, DATABASE_URL 우선)
     DB_PATH: str = str(Path(__file__).parent.parent / "data" / "database.json")
 
+    @property
+    def is_db_mode(self) -> bool:
+        """
+        DB 모드 여부 판별
+        - SQLite(기본값) → False (노션 동기화 모드)
+        - PostgreSQL/MySQL 등 외부 DB → True (노션 동기화 비활성)
+        """
+        return not self.DATABASE_URL.startswith("sqlite")
+
     model_config = {
         "env_file": str(Path(__file__).parent.parent / ".env"),
         "env_file_encoding": "utf-8",

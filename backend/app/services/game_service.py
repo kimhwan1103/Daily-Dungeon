@@ -266,6 +266,19 @@ def reset_streak():
         session.close()
 
 
+def reset_daily_streak():
+    """일일 스트릭 리셋 (자정에 미완료 퀘스트 존재 시)"""
+    session = get_session()
+    try:
+        row = session.query(UserStatsDB).first()
+        if row:
+            row.daily_streak = 0
+            row.updated_at = datetime.now()
+            session.commit()
+    finally:
+        session.close()
+
+
 # ============================================================
 #  퀘스트 히스토리 (완료 기록)
 # ============================================================

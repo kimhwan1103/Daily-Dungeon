@@ -21,6 +21,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .config import settings
 from .routers import quests, verify, user
 from .services.scheduler_service import start_scheduler, stop_scheduler
 from .models.database import init_db
@@ -67,3 +68,12 @@ app.include_router(user.router)     # 유저 상태 + 히스토리
 def health_check():
     """서버 상태 확인용"""
     return {"status": "ok", "service": "Quest Widget API"}
+
+
+@app.get("/api/mode")
+def get_mode():
+    """현재 동작 모드 반환 (프론트엔드 UI 분기용)"""
+    return {
+        "db_mode": settings.is_db_mode,
+        "mode": "db" if settings.is_db_mode else "notion",
+    }

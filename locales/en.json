@@ -1,0 +1,104 @@
+{
+  "lang": "en",
+  "font": "'Segoe UI', 'Noto Sans KR', sans-serif",
+  "header": {
+    "title": "Quest Log",
+    "sub": "Today's Mission"
+  },
+  "tabs": {
+    "quests": "Quests",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "stats": {
+    "cleared": "Cleared",
+    "combo": "Combo",
+    "totalXp": "Total EXP",
+    "daily": "Daily"
+  },
+  "quest": {
+    "empty": "No quests yet. Sync with Notion!",
+    "syncBtn": "Notion Sync",
+    "syncing": "Syncing...",
+    "addBtn": "Add Quest",
+    "refreshBtn": "Refresh",
+    "refreshing": "Loading...",
+    "sectionMain": "MAIN STORY",
+    "sectionDaily": "DAILY ROUTINE",
+    "sectionActive": "ACTIVE",
+    "sectionComplete": "COMPLETE",
+    "dailyTag": "DAILY"
+  },
+  "proof": {
+    "title": "Quest Verification",
+    "textLabel": "Work Description / Notes",
+    "textPlaceholder": "Describe what you did...",
+    "imageLabel": "Attach Screenshot",
+    "imagePlaceholder": "Click to attach image",
+    "cancel": "Cancel",
+    "submit": "Submit Proof"
+  },
+  "addQuest": {
+    "title": "New Quest",
+    "nameLabel": "Quest Name",
+    "namePlaceholder": "Enter your task",
+    "typeLabel": "Quest Type",
+    "categoryLabel": "Category",
+    "difficultyLabel": "Difficulty",
+    "cancel": "Cancel",
+    "submit": "Add"
+  },
+  "category": {
+    "dev": "Dev",
+    "study": "Study",
+    "life": "Life",
+    "work": "Work",
+    "etc": "Etc"
+  },
+  "difficulty": {
+    "easy": "Easy",
+    "medium": "Normal",
+    "hard": "Hard",
+    "legendary": "Epic"
+  },
+  "npc": {
+    "name": "Guild Master"
+  },
+  "history": {
+    "empty": "No history yet",
+    "proofTag": "Has proof"
+  },
+  "settings": {
+    "profileGroup": "Profile",
+    "nickname": "Nickname",
+    "widgetGroup": "Widget",
+    "opacity": "Opacity",
+    "alwaysOnTop": "Always on Top",
+    "clickThrough": "Click Through",
+    "soundEffect": "Sound Effects",
+    "dataGroup": "Data",
+    "resetAll": "Reset All",
+    "resetConfirm": "Reset all data? This cannot be undone.",
+    "languageGroup": "Language",
+    "language": "언어 / Language"
+  },
+  "header_btn": {
+    "pinTitle": "Toggle Mode (Ctrl+Shift+Space)",
+    "ctTitle": "Click Through (Ctrl+Shift+T)",
+    "minTitle": "Minimize"
+  },
+  "mode": {
+    "desktop": "DESKTOP",
+    "float": "FLOAT"
+  },
+  "message": {
+    "verifyError": "Verification error",
+    "subQuestAllDone": "All sub-quests complete! Bonus",
+    "dailyComplete": "Daily quest done! Streak",
+    "dailyCompleteUnit": " days",
+    "weeklyBonus": "7-day streak! Weekly bonus",
+    "dailyError": "Daily quest error"
+  },
+  "levelup": "LEVEL UP",
+  "avatarTitle": "Click to change avatar"
+}

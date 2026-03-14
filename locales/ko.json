@@ -1,0 +1,104 @@
+{
+  "lang": "ko",
+  "font": "'Noto Sans KR', sans-serif",
+  "header": {
+    "title": "Quest Log",
+    "sub": "Today's Mission"
+  },
+  "tabs": {
+    "quests": "퀘스트",
+    "history": "기록",
+    "settings": "설정"
+  },
+  "stats": {
+    "cleared": "Cleared",
+    "combo": "Combo",
+    "totalXp": "Total EXP",
+    "daily": "Daily"
+  },
+  "quest": {
+    "empty": "퀘스트를 추가해보세요",
+    "syncBtn": "Notion Sync",
+    "syncing": "동기화 중...",
+    "addBtn": "퀘스트 추가",
+    "refreshBtn": "새로고침",
+    "refreshing": "로딩 중...",
+    "sectionMain": "MAIN STORY",
+    "sectionDaily": "DAILY ROUTINE",
+    "sectionActive": "ACTIVE",
+    "sectionComplete": "COMPLETE",
+    "dailyTag": "DAILY"
+  },
+  "proof": {
+    "title": "퀘스트 증명",
+    "textLabel": "작업 내용 / 메모",
+    "textPlaceholder": "작업 내용을 입력하세요...",
+    "imageLabel": "스크린샷 첨부",
+    "imagePlaceholder": "클릭하여 이미지 첨부",
+    "cancel": "취소",
+    "submit": "완료 제출"
+  },
+  "addQuest": {
+    "title": "새로운 퀘스트",
+    "nameLabel": "퀘스트 이름",
+    "namePlaceholder": "할 일을 입력하세요",
+    "typeLabel": "퀘스트 타입",
+    "categoryLabel": "카테고리",
+    "difficultyLabel": "난이도",
+    "cancel": "취소",
+    "submit": "추가"
+  },
+  "category": {
+    "dev": "개발",
+    "study": "학습",
+    "life": "일상",
+    "work": "업무",
+    "etc": "기타"
+  },
+  "difficulty": {
+    "easy": "Easy",
+    "medium": "Normal",
+    "hard": "Hard",
+    "legendary": "Epic"
+  },
+  "npc": {
+    "name": "길드 마스터"
+  },
+  "history": {
+    "empty": "아직 기록이 없습니다",
+    "proofTag": "증명 있음"
+  },
+  "settings": {
+    "profileGroup": "프로필",
+    "nickname": "닉네임",
+    "widgetGroup": "위젯",
+    "opacity": "투명도",
+    "alwaysOnTop": "항상 위에 표시",
+    "clickThrough": "클릭 무시",
+    "soundEffect": "효과음",
+    "dataGroup": "데이터",
+    "resetAll": "전체 초기화",
+    "resetConfirm": "모든 데이터를 초기화하시겠습니까?",
+    "languageGroup": "언어",
+    "language": "언어 / Language"
+  },
+  "header_btn": {
+    "pinTitle": "모드 전환 (Ctrl+Shift+Space)",
+    "ctTitle": "클릭 무시 (Ctrl+Shift+T)",
+    "minTitle": "숨기기"
+  },
+  "mode": {
+    "desktop": "DESKTOP",
+    "float": "FLOAT"
+  },
+  "message": {
+    "verifyError": "검증 중 오류가 발생했습니다",
+    "subQuestAllDone": "모든 세부 퀘스트를 완료했습니다! 보너스",
+    "dailyComplete": "일일 퀘스트 완료! 연속",
+    "dailyCompleteUnit": "일",
+    "weeklyBonus": "7일 연속 달성! 주간 보너스",
+    "dailyError": "일일 퀘스트 처리 오류"
+  },
+  "levelup": "LEVEL UP",
+  "avatarTitle": "클릭하여 아바타 변경"
+}

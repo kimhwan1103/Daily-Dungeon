@@ -40,35 +40,46 @@ def _create_engine_with_tunnel():
 
     if settings.SSH_HOST:
         # SSH 터널 생성
-        from sshtunnel import SSHTunnelForwarder
+        try:
+            from sshtunnel import SSHTunnelForwarder
 
-        tunnel_kwargs = {
-            "ssh_address_or_host": (settings.SSH_HOST, settings.SSH_PORT),
-            "ssh_username": settings.SSH_USER,
-            "remote_bind_address": (settings.SSH_DB_HOST, settings.SSH_DB_PORT),
-        }
+            tunnel_kwargs = {
+                "ssh_address_or_host": (settings.SSH_HOST, settings.SSH_PORT),
+                "ssh_username": settings.SSH_USER,
+                "remote_bind_address": (settings.SSH_DB_HOST, settings.SSH_DB_PORT),
+            }
 
-        # 키 파일 우선, 없으면 비밀번호
-        if settings.SSH_KEY_PATH:
-            tunnel_kwargs["ssh_pkey"] = settings.SSH_KEY_PATH
-        elif settings.SSH_PASSWORD:
-            tunnel_kwargs["ssh_password"] = settings.SSH_PASSWORD
+            # 키 파일 우선, 없으면 비밀번호
+            if settings.SSH_KEY_PATH:
+                tunnel_kwargs["ssh_pkey"] = settings.SSH_KEY_PATH
+            elif settings.SSH_PASSWORD:
+                tunnel_kwargs["ssh_password"] = settings.SSH_PASSWORD
 
-        _ssh_tunnel = SSHTunnelForwarder(**tunnel_kwargs)
-        _ssh_tunnel.start()
+            _ssh_tunnel = SSHTunnelForwarder(**tunnel_kwargs)
+            _ssh_tunnel.start()
 
-        # DATABASE_URL의 host:port를 터널 로컬 포트로 교체
-        # 예: postgresql://user:pass@host:5432/db → postgresql://user:pass@127.0.0.1:{local_port}/db
-        local_port = _ssh_tunnel.local_bind_port
-        import re
-        db_url = re.sub(
-            r"@[^/]+",
-            f"@127.0.0.1:{local_port}",
-            settings.DATABASE_URL,
-        )
+            # DATABASE_URL의 host:port를 터널 로컬 포트로 교체
+            local_port = _ssh_tunnel.local_bind_port
+            import re
+            db_url = re.sub(
+                r"@[^/]+",
+                f"@127.0.0.1:{local_port}",
+                settings.DATABASE_URL,
+            )
 
-        # 종료 시 터널 정리
-        atexit.register(_close_tunnel)
+            # 종료 시 터널 정리
+            atexit.register(_close_tunnel)
+        except ImportError:
+            import logging
+            logging.getLogger("database").warning(
+                "sshtunnel 패키지 미설치 - SSH 터널 없이 직접 연결합니다. "
+                "SSH 터널이 필요하면: pip install sshtunnel"
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger("database").warning(
+                f"SSH 터널 연결 실패 - 직접 연결 시도: {e}"
+            )
     elif db_url.startswith("sqlite"):
         connect_args = {"check_same_thread": False}
 
@@ -113,6 +124,34 @@ class UserStatsDB(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class QuestsDB(Base):
+    """퀘스트 테이블 - DB 모드에서 노션 대신 사용"""
+    __tablename__ = "quests"
+
+    id = Column(String(100), primary_key=True)
+    name = Column(String(500), nullable=False)
+    quest_type = Column(String(20), default="sub")  # main/sub/daily
+    category = Column(String(20), default="etc")
+    difficulty = Column(String(20), default="medium")
+    xp = Column(Integer, default=30)
+    completed = Column(Boolean, default=False)
+    due_date = Column(String(20), nullable=True)
+    is_daily = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class SubQuestsDB(Base):
+    """세부 퀘스트 테이블 - DB 모드에서 노션 to_do 블록 대신 사용"""
+    __tablename__ = "sub_quests"
+
+    id = Column(String(100), primary_key=True)
+    quest_id = Column(String(100), nullable=False)  # 부모 퀘스트 ID
+    text = Column(String(500), nullable=False)
+    checked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+
 class QuestLogDB(Base):
     """퀘스트 완료 기록 테이블"""
     __tablename__ = "quest_logs"
@@ -133,15 +172,31 @@ class QuestLogDB(Base):
 
 def init_db():
     """
-    데이터베이스 테이블 자동 생성
+    데이터베이스 테이블 자동 생성 + 마이그레이션
 
     앱 시작 시 호출되며, 테이블이 없으면 자동으로 CREATE TABLE 실행
     이미 존재하는 테이블은 건드리지 않음 (데이터 안전)
-
-    어떤 DB URL을 넣든 (SQLite, PostgreSQL, MySQL)
-    이 함수 한 번 호출로 필요한 테이블 구조가 준비됨
+    신규 컬럼이 추가된 경우 ALTER TABLE로 마이그레이션
     """
     Base.metadata.create_all(bind=engine)
+    _migrate_quest_type()
+
+
+def _migrate_quest_type():
+    """quest_type 컬럼이 없는 기존 테이블에 추가"""
+    from sqlalchemy import inspect, text
+    insp = inspect(engine)
+    if "quests" in insp.get_table_names():
+        columns = [c["name"] for c in insp.get_columns("quests")]
+        if "quest_type" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE quests ADD COLUMN quest_type VARCHAR(20) DEFAULT 'sub'"
+                ))
+                # is_daily=True인 기존 레코드를 daily로 변환
+                conn.execute(text(
+                    "UPDATE quests SET quest_type = 'daily' WHERE is_daily = true"
+                ))
 
 
 def get_db() -> Session:

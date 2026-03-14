@@ -27,7 +27,8 @@
       "main.js",
       "preload.js",
       "index.html",
-      "package.json"
+      "package.json",
+      "locales/**/*"
     ],
     "extraResources": [
       {

@@ -14,8 +14,10 @@
 
 from fastapi import APIRouter, HTTPException
 
+from ..config import settings
 from ..models.schemas import VerifyRequest, VerifyResponse
 from ..services import gemini_service, game_service, notion_service
+from ..services import quest_db_service
 
 router = APIRouter(prefix="/api", tags=["verify"])
 
@@ -26,6 +28,7 @@ DIFFICULTY_XP = {
     "hard": 50,
     "legendary": 100,
 }
+MAIN_QUEST_XP_MULTIPLIER = 2.5
 
 
 @router.post("/verify", response_model=VerifyResponse)
@@ -67,14 +70,19 @@ async def verify_quest(req: VerifyRequest):
 
     if result.is_passed:
         # 2단계 (통과): 경험치 부여 + 레벨업 체크
-        xp_earned = DIFFICULTY_XP.get(req.difficulty.value, 30)
+        base_xp = DIFFICULTY_XP.get(req.difficulty.value, 30)
+        # 메인 퀘스트: XP 2.5배
+        xp_earned = round(base_xp * MAIN_QUEST_XP_MULTIPLIER) if req.quest_type.value == "main" else base_xp
         stats, level_up, new_level = game_service.grant_xp(xp_earned)
 
-        # 3단계: 노션에 완료 상태 반영
+        # 3단계: 완료 상태 반영 (모드에 따라 분기)
         try:
-            await notion_service.mark_quest_complete(req.task_id)
+            if settings.is_db_mode:
+                quest_db_service.mark_complete(req.task_id)
+            else:
+                await notion_service.mark_quest_complete(req.task_id)
         except Exception:
-            pass  # 노션 동기화 실패해도 XP는 이미 부여됨
+            pass  # 동기화 실패해도 XP는 이미 부여됨
 
         # 4단계: 히스토리에 기록
         game_service.add_quest_log(
@@ -93,6 +101,7 @@ async def verify_quest(req: VerifyRequest):
     return VerifyResponse(
         task_id=req.task_id,
         result=result,
+        quest_type=req.quest_type,
         xp_earned=xp_earned,
         level_up=level_up,
         new_level=new_level,

@@ -28,6 +28,13 @@ class SubQuestDTO(BaseModel):
 #  퀘스트 관련
 # ============================================================
 
+class QuestType(str, Enum):
+    """퀘스트 타입"""
+    MAIN = "main"       # 메인 퀘스트 (장기 목표, XP 2.5배)
+    SUB = "sub"         # 서브 퀘스트 (일반 단발성)
+    DAILY = "daily"     # 일일 반복 퀘스트 (스트릭 연동)
+
+
 class QuestCategory(str, Enum):
     """퀘스트 카테고리 (위젯의 카테고리 아이콘과 매핑)"""
     DEV = "dev"
@@ -52,12 +59,13 @@ class QuestDTO(BaseModel):
     """
     id: str = Field(description="노션 페이지 ID")
     name: str = Field(description="퀘스트 제목")
+    quest_type: QuestType = Field(default=QuestType.SUB, description="퀘스트 타입 (main/sub/daily)")
     category: QuestCategory = Field(default=QuestCategory.ETC, description="카테고리")
     difficulty: QuestDifficulty = Field(default=QuestDifficulty.MEDIUM, description="난이도")
     xp: int = Field(default=30, description="보상 경험치")
     completed: bool = Field(default=False, description="완료 여부")
     due_date: Optional[str] = Field(default=None, description="마감일")
-    is_daily: bool = Field(default=False, description="일일 반복 퀘스트 여부")
+    is_daily: bool = Field(default=False, description="일일 반복 퀘스트 여부 (하위 호환)")
     sub_quests: list[SubQuestDTO] = Field(default_factory=list, description="세부 퀘스트 목록")
     sub_total: int = Field(default=0, description="세부 퀘스트 총 개수")
     sub_done: int = Field(default=0, description="완료된 세부 퀘스트 수")
@@ -81,6 +89,7 @@ class VerifyRequest(BaseModel):
     """
     task_id: str = Field(description="검증할 퀘스트의 노션 페이지 ID")
     quest_title: str = Field(description="퀘스트 제목 (프롬프트에 포함)")
+    quest_type: QuestType = Field(default=QuestType.SUB, description="퀘스트 타입")
     category: QuestCategory = Field(default=QuestCategory.ETC, description="퀘스트 카테고리")
     difficulty: QuestDifficulty = Field(default=QuestDifficulty.MEDIUM, description="퀘스트 난이도")
     proof_text: Optional[str] = Field(default=None, description="텍스트 증명 (코드, 요약 등)")
@@ -101,6 +110,7 @@ class VerifyResponse(BaseModel):
     """검증 API 최종 응답 (AI 결과 + 보상 정보)"""
     task_id: str
     result: VerifyResult
+    quest_type: QuestType = Field(default=QuestType.SUB, description="퀘스트 타입")
     xp_earned: int = Field(default=0, description="획득한 XP (통과 시에만)")
     level_up: bool = Field(default=False, description="레벨업 발생 여부")
     new_level: Optional[int] = Field(default=None, description="레벨업 시 새 레벨")
